@@ -1,8 +1,8 @@
-"""Test L1 filtering
-"""
-
 import subprocess
 from pathlib import Path
+
+from Bio.SeqIO.QualityIO import FastqGeneralIterator
+from gzip import open as gzopen
 
 from latch import large_task, workflow
 from latch.resources.launch_plan import LaunchPlan
@@ -57,6 +57,37 @@ def filter_L2_task(read2: LatchFile) -> LatchFile:
 
     return LatchFile(str(file_L2), "latch:///linker2_R2.fastq.gz")
 
+@large_task
+def process_bc_task(read2: LatchFile) -> (LatchFile, LatchFile):
+    """ Process read2: save genomic portion as read3, extract
+    barcode seqs and save as read3
+    """
+    # A reference to output.
+    file_r2 = Path("S1_L001_R2_001.fastq").resolve()
+    file_r3 = Path("S1_L001_R3_001.fastq").resolve()
+
+    # Define barcode sequences
+    seq_start = 117
+    bc1_start, bc1_end = 60, 68
+    bc2_start, bc2_end = 22, 30
+
+    with gzopen(read2, "rt") as in_handle, \
+            open(file_r2, "w") as out_r2, \
+            open(file_r3, "w") as out_r3:
+        for i, seq, qual in FastqGeneralIterator(read2):
+            # write genomic to r3
+            seq_r3 = seq[seq_start:]
+            qual_r3 = qual[seq_start:]
+            out_r3.write("@%s\n%s\n+\n%s\n" % (i, seq_r3, qual_r3))
+            # write barcode to r2
+            seq_r2 = seq[bc2_start:bc2_end] + seq[bc1_start:bc1_end]
+            qual_r2 = qual[bc2_start:bc2_end] + qual[bc1_start:bc1_end]        
+            out_r2.write("@%s\n%s\n+\n%s\n" % (i, seq_r2, qual_r2))
+
+    return ( 
+        LatchFile(str(file_r2), "latch:///S1_L001_R2_001.fastq"),
+        LatchFile(str(file_r3), "latch:///S1_L001_R3_001.fastq")
+    )
 
 """The metadata included here will be injected into your interface."""
 metadata = LatchMetadata(
@@ -86,7 +117,7 @@ metadata = LatchMetadata(
 
 
 @workflow(metadata)
-def spatial_atac(read1: LatchFile, read2: LatchFile) -> (LatchFile, LatchFile):
+def spatial_atac(read1: LatchFile, read2: LatchFile) -> (LatchFile, LatchFile, LatchFile):
     """Description...
 
     Spatial ATAC-seq
@@ -103,8 +134,11 @@ def spatial_atac(read1: LatchFile, read2: LatchFile) -> (LatchFile, LatchFile):
     * split read2 into genomic (read3) and barcode (read2)
     * run Cell Ranger ATAC
     """
+
     filter1 = filter_L1_task(read2=read2)
-    return read1, filter_L2_task(read2=filter1)
+    filter2 = filter_L2_task(read2=filter1)
+    new_read2, read3 = process_bc_task(read2=filter2)
+    return read1, new_read2, read3
 
 
 """
@@ -116,7 +150,7 @@ LaunchPlan(
     spatial_atac,
     "Test Data",
     {
-        "read1": LatchFile("s3:///BASESPACE_IMPORTS/projects/PL000121/D01027_NG01679_L1/D01027_NG01679_S1_L001_R1_001.fastq.gz"),
-        "read2": LatchFile("s3:///BASESPACE_IMPORTS/projects/PL000121/D01027_NG01679_L1/D01027_NG01679_S1_L001_R2_001.fastq.gz"),
+        "read1": LatchFile("s3://BASESPACE_IMPORTS/projects/PL000121/D01033_NG01681_L1/D01033_NG01681_S3_L001_R1_001.fastq.gz"),
+        "read2": LatchFile("s3://BASESPACE_IMPORTS/projects/PL000121/D01033_NG01681_L1/D01033_NG01681_S3_L001_R2_001.fastq.gz"),
     },
 )
