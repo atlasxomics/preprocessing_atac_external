@@ -18,7 +18,7 @@ RUN curl "https://cf.10xgenomics.com/releases/cell-atac/cellranger-atac-2.1.0.ta
 RUN curl -O https://cf.10xgenomics.com/supp/cell-atac/refdata-cellranger-arc-GRCh38-2020-A-2.0.0.tar.gz && \
     tar -xzvf refdata-cellranger-arc-GRCh38-2020-A-2.0.0.tar.gz && \
     rm refdata-cellranger-arc-GRCh38-2020-A-2.0.0.tar.gz
-RUN curl -O curl -O https://cf.10xgenomics.com/supp/cell-atac/refdata-cellranger-arc-mm10-2020-A-2.0.0.tar.gz && \
+RUN curl -O https://cf.10xgenomics.com/supp/cell-atac/refdata-cellranger-arc-mm10-2020-A-2.0.0.tar.gz && \
     tar -xzvf refdata-cellranger-arc-mm10-2020-A-2.0.0.tar.gz && \
     rm refdata-cellranger-arc-mm10-2020-A-2.0.0.tar.gz
 
