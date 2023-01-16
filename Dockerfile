@@ -22,6 +22,11 @@ RUN curl -O https://cf.10xgenomics.com/supp/cell-atac/refdata-cellranger-arc-mm1
     tar -xzvf refdata-cellranger-arc-mm10-2020-A-2.0.0.tar.gz && \
     rm refdata-cellranger-arc-mm10-2020-A-2.0.0.tar.gz
 
+COPY bc_process.py /root/bc_process.py
+
+# Replace default barcode file
+COPY 737K-cratac-v1.txt.gz /root/cellranger-atac-2.1.0/lib/python/atac/barcodes/737K-cratac-v1.txt.gz
+
 # STOP HERE:
 # The following lines are needed to ensure your build environement works
 # correctly with latch.
