@@ -10,10 +10,10 @@ from latch.types import LatchDir, LatchFile
 def copy_r1(output_dir: LatchDir) -> (LatchDir):
 
         r1 = LatchFile("latch:///BASESPACE_IMPORTS/projects/PL000121/D01033_NG01681_L1/D01033_NG01681_S3_L001_R1_001.fastq.gz")
+        
         os.mkdir("/root/output")
         os.system(f"mv {r1.local_path} /root/output")
         os.system("touch /root/output/foo.txt")
-        print(os.listdir("/root/output"))
 
         return LatchDir("/root/output", output_dir.remote_path)
 
