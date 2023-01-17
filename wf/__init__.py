@@ -8,11 +8,11 @@ from latch.types import LatchAuthor, LatchFile, LatchMetadata, LatchParameter
 
 
 @large_task
-def filter_r2_task(read2: LatchFile) -> LatchFile:
+def filter_r2_task(r2: LatchFile) -> LatchFile:
 
     bbduk1_cmd = [
         "bbmap/bbduk.sh",
-        f"in1={read2.local_path}",
+        f"in1={r2.local_path}",
         "outm1=/root/linker1_R2.fastq.gz",  
         "k=30",
         "mm=f",
@@ -48,7 +48,7 @@ def filter_r2_task(read2: LatchFile) -> LatchFile:
 
 
 @large_task
-def process_bc_task(read2: LatchFile) -> (LatchFile, LatchFile):
+def process_bc_task(r2: LatchFile) -> (LatchFile, LatchFile):
     """ Process read2: save genomic portion as read3, extract
     barcode seqs and save as read3
     """
@@ -57,7 +57,7 @@ def process_bc_task(read2: LatchFile) -> (LatchFile, LatchFile):
         "python",
         "bc_process.py",
         "--input",
-        read2.local_path,
+        r2.local_path,
         "--output_R2",
         "/root/S1_L001_R2_001.fastq",
         "--output_R3",
@@ -70,9 +70,14 @@ def process_bc_task(read2: LatchFile) -> (LatchFile, LatchFile):
     file_r3 = Path("S1_L001_R3_001.fastq").resolve()
 
     return ( 
-        LatchFile(str(file_r2), f"latch:///cell-ranger_inputs/{file_r2}"),
-        LatchFile(str(file_r3), f"latch:///cell-ranger_inputs/{file_r3}")
+        LatchFile(str(file_r2), f"latch:///S1_L001_R2_001.fastq"),
+        LatchFile(str(file_r3), f"latch:///S1_L001_R3_001.fastq")
     )
+
+@large_task
+def copy_r1_task(r1: LatchFile) -> (LatchFile):
+
+        return LatchFile(r1.local_path, "latch:///S1_L001_R1_001.fastq.gz")
 
 """The metadata included here will be injected into your interface."""
 metadata = LatchMetadata(
@@ -86,12 +91,12 @@ metadata = LatchMetadata(
     repository="https://github.com/jpmcga/Spatial_ATAC-seq/",
     license="MIT",
     parameters={
-        "read1": LatchParameter(
+        "r1": LatchParameter(
             display_name="Read 1",
             description="Paired-end read 1 file to be processed.",
             batch_table_column=True,  # Show this parameter in batched mode.
         ),
-        "read2": LatchParameter(
+        "r2": LatchParameter(
             display_name="Read 2",
             description="Paired-end read 2 file to be processed.",
             batch_table_column=True,  # Show this parameter in batched mode.
@@ -102,7 +107,7 @@ metadata = LatchMetadata(
 
 
 @workflow(metadata)
-def spatial_atac(read1: LatchFile, read2: LatchFile) -> (LatchFile, LatchFile, LatchFile):
+def spatial_atac(r1: LatchFile, r2: LatchFile) -> (LatchFile, LatchFile, LatchFile):
     """Description...
 
     Spatial ATAC-seq
@@ -120,9 +125,10 @@ def spatial_atac(read1: LatchFile, read2: LatchFile) -> (LatchFile, LatchFile, L
     * run Cell Ranger ATAC
     """
 
-    filtered_r2 = filter_r2_task(read2=read2)
-    new_read2, read3 = process_bc_task(read2=filtered_r2)
-    return read1, new_read2, read3
+    filtered_r2 = filter_r2_task(r2=r2)
+    new_r2, r3 = process_bc_task(r2=filtered_r2)
+    new_r1 = copy_r1_task(r1=r1)
+    return new_r1, new_r2, r3
 
 
 """
