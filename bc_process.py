@@ -35,7 +35,7 @@ with gzopen(input_file_R2, "rt") as in_handle_R2, \
         new_seq_R3 = seq[seq_start:]
         new_qual_R3 = qual[seq_start:]
         barcode = seq[bc2_start:bc2_end] + seq[bc1_start:bc1_end] # !!! BC2 + BC1
-        new_qual_R2 = qual[bc2_start:bc2_end] + qual[bc1_start:bc1_end]        
+        new_qual_R2 = qual[bc2_start:bc2_end] + qual[bc1_start:bc1_end] 
         out_handle_R3.write("@%s\n%s\n+\n%s\n" % (title, new_seq_R3, new_qual_R3))
         out_handle_R2.write("@%s\n%s\n+\n%s\n" % (title, barcode, new_qual_R2))
 
