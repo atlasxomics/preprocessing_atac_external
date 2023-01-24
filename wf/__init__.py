@@ -1,7 +1,7 @@
-from enum import Enum
 import os
-from pathlib import Path
 import subprocess
+from enum import Enum
+from pathlib import Path
 
 from latch import large_task, medium_task, workflow
 from latch.resources.launch_plan import LaunchPlan
@@ -89,8 +89,9 @@ def filter_task(
 
 @medium_task(retries=0)
 def process_bc_task(
-    r2: LatchFile,
-    run_id: str
+    r2: LatchFile = LatchFile("latch:///downsampled/D01033_NG01681/ds_D01033_NG01681_S3_L001_R2_001.fastq.gz"),
+    run_id: str = 'bulk_ds_D01033_NG01681',
+    bulk: bool = True
 ) -> (LatchDir):
     """ Process read2: save genomic portion as read3, extract 16 bp
     barcode seqs and save as read3
@@ -104,13 +105,16 @@ def process_bc_task(
     _bc_cmd = [
         "python",
         "bc_process.py",
-        "--input",
+        "-i",
         r2.local_path,
-        "--output_R2",
+        "-o2",
         f"{str(new_r2)}",
-        "--output_R3",
+        "-o3",
         f"{str(r3)}"
     ]
+
+    if bulk:
+        _bc_cmd.append('-b')
 
     subprocess.run(_bc_cmd)
 
@@ -186,6 +190,11 @@ metadata = LatchMetadata(
             description="Select reference genome for cellranger atac.",
             batch_table_column=True,
         ),
+            "bulk": LatchParameter(
+            display_name="bulk",
+            description="If True, barcode sequences will be randomized.",
+            batch_table_column=True,
+        )
     },
 )
 
@@ -195,7 +204,8 @@ def spatial_atac(
     r1: LatchFile,
     r2: LatchFile,
     run_id: str,
-    species: Species
+    species: Species,
+    bulk: bool = False
 ) -> (LatchDir):
     """Pipeline for processing Spatial ATAC-seq data generated via DBiT-seq.
 
@@ -215,7 +225,7 @@ def spatial_atac(
     """
 
     filtered_r1, filtered_r2 = filter_task(r1=r1, r2=r2, run_id=run_id)
-    input_dir = process_bc_task(r2=filtered_r2, run_id=run_id)
+    input_dir = process_bc_task(r2=filtered_r2, run_id=run_id, bulk=bulk)
     return cellranger_task(input_dir=input_dir, run_id=run_id, species=species)
 
 
@@ -223,9 +233,10 @@ LaunchPlan(
     spatial_atac,
     "Test Data",
     {
-        "r1" : LatchFile("latch:///BASESPACE_IMPORTS/projects/PL000121/D01033_NG01681_L1/D01033_NG01681_S3_L001_R1_001.fastq.gz"),
-        "r2" : LatchFile("latch:///BASESPACE_IMPORTS/projects/PL000121/D01033_NG01681_L1/D01033_NG01681_S3_L001_R2_001.fastq.gz"),
-        "run_id" : "D01033_NG01681",
-        "species" : Species.human
+        "r1" : LatchFile("latch:///downsampled/D01033_NG01681/ds_D01033_NG01681_S3_L001_R1_001.fastq.gz"),
+        "r2" : LatchFile("latch:///downsampled/D01033_NG01681/ds_D01033_NG01681_S3_L001_R2_001.fastq.gz"),
+        "run_id" : "ds_D01033_NG01681",
+        "species" : Species.human,
+        "bulk" : False
     },
 )
