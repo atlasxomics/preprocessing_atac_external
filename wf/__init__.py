@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 import subprocess
 
-from latch import large_task, workflow
+from latch import large_task, medium_task, workflow
 from latch.resources.launch_plan import LaunchPlan
 from latch.types import (LatchAuthor, LatchDir, LatchFile, LatchMetadata,
                         LatchParameter, LatchRule)
@@ -14,7 +14,7 @@ class Species(Enum):
     human = "refdata-cellranger-arc-GRCh38-2020-A-2.0.0"
 
 
-@large_task(retries=0)
+@medium_task(retries=0)
 def filter_task(
     r1: LatchFile,
     r2: LatchFile,
@@ -23,11 +23,10 @@ def filter_task(
 
     filtered_r1_l1 = Path(f"{run_id}_linker1_R1.fastq.gz").resolve()
     filtered_r2_l1 = Path(f"{run_id}_linker1_R2.fastq.gz").resolve()
+    l1_stats = Path(f"{run_id}_l1_stats.txt").resolve()
 
     _bbduk1_cmd = [
         "bbmap/bbduk.sh",
-        # "-Xmx100g", 
-        # "-Xms100g",
         f"in1={r1.local_path}",
         f"in2={r2.local_path}",
         f"outm1={str(filtered_r1_l1)}",
@@ -38,8 +37,7 @@ def filter_task(
         "rcomp=f",
         "restrictleft=103",
         "hdist=3",
-        f"stats=/root/{run_id}_linker1_stats.txt",
-        "threads=86", # 80% does this matter?
+        f"stats={l1_stats}",
         "literal=GTGGCCGATGTTTCGCATCGGCGTACGACT"
         ]
 
@@ -47,6 +45,7 @@ def filter_task(
 
     filtered_r1_l2 = Path(f"{run_id}_linker2_R1.fastq.gz").resolve()
     filtered_r2_l2 = Path(f"{run_id}_linker2_R2.fastq.gz").resolve()
+    l2_stats = Path(f"{run_id}_l2_stats.txt").resolve()
 
     _bbduk2_cmd = [
         "bbmap/bbduk.sh",
@@ -60,12 +59,21 @@ def filter_task(
         "rcomp=f",
         "restrictleft=65",
         "hdist=3",
-        f"stats=/root/{run_id}_linker2_stats.txt",
-        "threads=46",
+        f"stats={l2_stats}",
         "literal=ATCCACGTGCTTGAGAGGCCAGAGCATTCG"
     ]
 
     subprocess.run(_bbduk2_cmd)
+
+    # Save stats
+    LatchFile(
+        str(l1_stats),
+        f"latch:///runs/{run_id}/preprocessing/{l1_stats.name}"
+    )
+    LatchFile(
+        str(l2_stats),
+        f"latch:///runs/{run_id}/preprocessing/{l2_stats.name}"
+    )
 
     return (
             LatchFile(
@@ -79,7 +87,7 @@ def filter_task(
     )
 
 
-@large_task(retries=0)
+@medium_task(retries=0)
 def process_bc_task(
     r2: LatchFile,
     run_id: str
@@ -132,7 +140,7 @@ def cellranger_task(
     "--force-cells=2500",
     ]
 
-    subprocess.run(cr_command)
+    subprocess.run(_cr_command)
 
     return LatchDir(
         str(local_out),
@@ -168,8 +176,8 @@ metadata = LatchMetadata(
             comment="Must match prefix of input fastq (Dxxxxx_NGxxxxx)",
             rules=[
                 LatchRule(
-                    regex="^(D\d{5}_NG\d{5})$",
-                    message="Must match prefix of input fastq (Dxxxxx_NGxxxxx)"
+                    regex="D\d{5}_NG\d{5}$",
+                    message="Must match prefix of input fastq ie. Dxxxxx_NGxxxxx"
                 )
             ]
         ),
