@@ -24,7 +24,11 @@ RUN curl -O https://cf.10xgenomics.com/supp/cell-atac/refdata-cellranger-arc-mm1
 
 COPY bc_process.py /root/bc_process.py
 
-# Replace default barcode file
+# Change cellranger to return median not max
+COPY tss.py /root/cellranger-atac-2.1.0/lib/python/atac/metrics/__init__.py
+
+# Root barcodefile for barcode script, replace default barcode file
+COPY 737K-cratac-v1.txt.gz /root/737K-cratac-v1.txt.gz
 COPY 737K-cratac-v1.txt.gz /root/cellranger-atac-2.1.0/lib/python/atac/barcodes/737K-cratac-v1.txt.gz
 
 # STOP HERE:
