@@ -26,7 +26,7 @@ def calculate_tss_score_and_profile(relative_positions):
     if any(yvals > 0):
         min_nonzero = yvals[yvals > 0].min()
         yvals /= min_nonzero
-        score = yvals.median()
+        score = yvals.max()
         return score, np.array(yvals), xvals
     return 0.0, np.array(yvals), xvals
 
