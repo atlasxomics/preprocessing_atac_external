@@ -19,7 +19,7 @@ def filter_task(
     r1: LatchFile,
     r2: LatchFile,
     run_id: str
-) -> (LatchFile, LatchFile):
+) -> (LatchFile, LatchFile, LatchFile, LatchFile):
 
     filtered_r1_l1 = Path(f"{run_id}_linker1_R1.fastq.gz").resolve()
     filtered_r2_l1 = Path(f"{run_id}_linker1_R2.fastq.gz").resolve()
@@ -65,16 +65,6 @@ def filter_task(
 
     subprocess.run(_bbduk2_cmd)
 
-    # Save stats
-    LatchFile(
-        str(l1_stats),
-        f"latch:///runs/{run_id}/preprocessing/{l1_stats.name}"
-    )
-    LatchFile(
-        str(l2_stats),
-        f"latch:///runs/{run_id}/preprocessing/{l2_stats.name}"
-    )
-
     return (
             LatchFile(
                 str(filtered_r1_l2),
@@ -83,15 +73,23 @@ def filter_task(
             LatchFile(
                 str(filtered_r2_l2),
                 f"latch:///runs/{run_id}/preprocessing/{run_id}_linker2_R2.fastq.gz"
+        ),
+            LatchFile(
+                str(l1_stats),
+                f"latch:///runs/{run_id}/preprocessing/{l1_stats.name}"
+        ),
+            LatchFile(
+                str(l2_stats),
+                f"latch:///runs/{run_id}/preprocessing/{l2_stats.name}"
         )
     )
 
 
 @medium_task(retries=0)
 def process_bc_task(
-    r2: LatchFile = LatchFile("latch:///downsampled/D01033_NG01681/ds_D01033_NG01681_S3_L001_R2_001.fastq.gz"),
-    run_id: str = 'bulk_ds_D01033_NG01681',
-    bulk: bool = True
+    r2: LatchFile,
+    run_id: str,
+    bulk: bool
 ) -> (LatchDir):
     """ Process read2: save genomic portion as read3, extract 16 bp
     barcode seqs and save as read3
@@ -190,9 +188,9 @@ metadata = LatchMetadata(
             description="Select reference genome for cellranger atac.",
             batch_table_column=True,
         ),
-            "bulk": LatchParameter(
+        "bulk": LatchParameter(
             display_name="bulk",
-            description="If True, barcode sequences will be randomized.",
+            description="If True, barcodes will be randomly assigned to reads.",
             batch_table_column=True,
         )
     },
@@ -205,7 +203,7 @@ def spatial_atac(
     r2: LatchFile,
     run_id: str,
     species: Species,
-    bulk: bool = False
+    bulk: bool
 ) -> (LatchDir):
     """Pipeline for processing Spatial ATAC-seq data generated via DBiT-seq.
 
@@ -224,7 +222,7 @@ def spatial_atac(
     * run Cell Ranger ATAC
     """
 
-    filtered_r1, filtered_r2 = filter_task(r1=r1, r2=r2, run_id=run_id)
+    filtered_r1, filtered_r2, _, _ = filter_task(r1=r1, r2=r2, run_id=run_id)
     input_dir = process_bc_task(r2=filtered_r2, run_id=run_id, bulk=bulk)
     return cellranger_task(input_dir=input_dir, run_id=run_id, species=species)
 
