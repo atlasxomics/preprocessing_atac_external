@@ -172,14 +172,13 @@ metadata = LatchMetadata(
         ),
         "run_id": LatchParameter(
             display_name="run id",
-            description="ATX Run ID, default to Dxxxxx_NGxxxxx format; must match fastqs.",
+            description="ATX Run ID with optional prefix, default to Dxxxxx_NGxxxxx format.",
             batch_table_column=True,
             placeholder="Dxxxxx_NGxxxxx",
-            comment="Must match prefix of input fastq (Dxxxxx_NGxxxxx)",
             rules=[
                 LatchRule(
-                    regex="D\d{5}_NG\d{5}$",
-                    message="Must match prefix of input fastq ie. Dxxxxx_NGxxxxx"
+                    regex="^[^/].*",
+                    message="run id cannot start with a '/'"
                 )
             ]
         ),
