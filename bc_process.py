@@ -43,4 +43,4 @@ with gzopen(input_file_R2, 'rt') as in_handle_R2, \
             barcode = seq[bc2_start:bc2_end] + seq[bc1_start:bc1_end]
         new_qual_R2 = qual[bc2_start:bc2_end] + qual[bc1_start:bc1_end] 
         out_handle_R2.write(f'@{title}\n{barcode}\n+\n{new_qual_R2}\n')
-print("complete", end)
+print("complete")

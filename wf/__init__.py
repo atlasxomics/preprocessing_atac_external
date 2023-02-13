@@ -5,8 +5,14 @@ from pathlib import Path
 
 from latch import large_task, medium_task, workflow
 from latch.resources.launch_plan import LaunchPlan
-from latch.types import (LatchAuthor, LatchDir, LatchFile, LatchMetadata,
-                        LatchParameter, LatchRule)
+from latch.types import (
+    LatchAuthor,
+    LatchDir,
+    LatchFile,
+    LatchMetadata,
+    LatchParameter,
+    LatchRule
+)
 
 
 class Species(Enum):
@@ -68,19 +74,19 @@ def filter_task(
     return (
             LatchFile(
                 str(filtered_r1_l2),
-                f"latch:///runs/{run_id}/cellranger_inputs/{run_id}_S1_L001_R1_001.fastq.gz"
+                f"latch:///cr_outs/{run_id}/cellranger_inputs/{run_id}_S1_L001_R1_001.fastq.gz"
         ),
             LatchFile(
                 str(filtered_r2_l2),
-                f"latch:///runs/{run_id}/preprocessing/{run_id}_linker2_R2.fastq.gz"
+                f"latch:///cr_outs/{run_id}/preprocessing/{run_id}_linker2_R2.fastq.gz"
         ),
             LatchFile(
                 str(l1_stats),
-                f"latch:///runs/{run_id}/preprocessing/{l1_stats.name}"
+                f"latch:///cr_outs/{run_id}/preprocessing/{l1_stats.name}"
         ),
             LatchFile(
                 str(l2_stats),
-                f"latch:///runs/{run_id}/preprocessing/{l2_stats.name}"
+                f"latch:///cr_outs/{run_id}/preprocessing/{l2_stats.name}"
         )
     )
 
@@ -118,7 +124,7 @@ def process_bc_task(
 
     return LatchDir(
         str(outdir),
-        f"latch:///runs/{run_id}/cellranger_inputs/"
+        f"latch:///cr_outs/{run_id}/cellranger_inputs/"
     )
 
 
@@ -128,6 +134,9 @@ def cellranger_task(
     run_id: str,
     species: Species
 ) -> (LatchDir):
+    """Run Cell Ranger ATAC on cellranger_inputs dir; append run_id to all
+    outfiles.
+    """
 
     local_out = Path(f'{run_id}/outs/').resolve()
 
@@ -144,9 +153,15 @@ def cellranger_task(
 
     subprocess.run(_cr_command)
 
+    try: # Append run_id to outs and check for out_dir
+        for f in os.listdir(local_out):
+            os.rename(f'{local_out}/{f}', f'{local_out}/{run_id}_{f}')
+    except FileNotFoundError:
+        print("No output files detected; check Cell Ranger logs for failure")
+
     return LatchDir(
         str(local_out),
-        f"latch:///runs/{run_id}/outs/"
+        f"latch:///cr_outs/{run_id}/outs/"
     )
 
 
@@ -237,3 +252,11 @@ LaunchPlan(
         "bulk" : False
     },
 )
+
+if __name__ == '__main__':
+    cellranger_task(
+        input_dir=LatchDir("/cr_outs/ds_D01033_NG01681/cellranger_inputs"),
+        run_id="ds_D01033_NG01681",
+        species=Species.human
+        )
+
