@@ -197,6 +197,8 @@ def lims_task(
         payload['rslt_fk_content'] = pk
         payload['rslt_fk_test'] = 39
         payload['rslt_cf_value'] = 'upload'
+
+        print(lims.push_result(payload, slims))
     
         return results_dir
 
