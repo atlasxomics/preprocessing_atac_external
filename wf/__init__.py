@@ -2,8 +2,10 @@ import os
 import subprocess
 from enum import Enum
 from pathlib import Path
+from typing import Optional
 
-from latch import large_task, medium_task, workflow
+from latch import large_task, medium_task, small_task, workflow
+from latch.resources.conditional import create_conditional_section
 from latch.resources.launch_plan import LaunchPlan
 from latch.types import (
     LatchAuthor,
@@ -13,6 +15,8 @@ from latch.types import (
     LatchParameter,
     LatchRule
 )
+
+import wf.lims as lims
 
 
 class Species(Enum):
@@ -96,7 +100,7 @@ def process_bc_task(
     r2: LatchFile,
     run_id: str,
     bulk: bool
-) -> (LatchDir):
+) -> LatchDir:
     """ Process read2: save genomic portion as read3, extract 16 bp
     barcode seqs and save as read3
     """
@@ -164,6 +168,39 @@ def cellranger_task(
         f"latch:///cr_outs/{run_id}/outs/"
     )
 
+@small_task(retries=0)
+def lims_task(
+    results_dir: LatchDir,
+    run_id: str,
+    upload: bool,
+    ng_id: Optional[str]
+) -> LatchDir:
+
+    if upload:
+    
+        data = Path(results_dir.local_path + f'/{run_id}_summary.csv').resolve()
+        
+        slims = lims.slims_init()
+        results = lims.csv_to_dict(data)
+    
+        payload = {lims.mapping[key]:value for (key, value) in results.items()
+                    if key in lims.mapping.keys() and value not in lims.NA}
+    
+        if ng_id:
+            pk = lims.get_pk(ng_id, slims)
+        else:
+            try:
+                pk = lims.get_pk(run_id.split('_')[-1], slims)
+            except IndexError:
+                print('Invalid SLIMS ng_id.')
+    
+        payload['rslt_fk_content'] = pk
+        payload['rslt_fk_test'] = 39
+        payload['rslt_cf_value'] = 'upload'
+    
+        return results_dir
+
+    return results_dir
 
 metadata = LatchMetadata(
     display_name="Spatial ATAC-seq",
@@ -187,13 +224,19 @@ metadata = LatchMetadata(
         ),
         "run_id": LatchParameter(
             display_name="run id",
-            description="ATX Run ID with optional prefix, default to Dxxxxx_NGxxxxx format.",
+            description="ATX Run ID with optional prefix, default to \
+                        Dxxxxx_NGxxxxx format.",
             batch_table_column=True,
             placeholder="Dxxxxx_NGxxxxx",
             rules=[
                 LatchRule(
                     regex="^[^/].*",
                     message="run id cannot start with a '/'"
+                ),
+                LatchRule(
+                    regex="_NG[0-9]{5}$",
+                    message="Provide ng_id in ng_id field if upload to \
+                    SLIMS desired."
                 )
             ]
         ),
@@ -206,7 +249,26 @@ metadata = LatchMetadata(
             display_name="bulk",
             description="If True, barcodes will be randomly assigned to reads.",
             batch_table_column=True,
-        )
+        ),
+       "upload_to_slims": LatchParameter(
+            display_name="upload to slims",
+            description="Select for CellRanger outs (summary.csv) to be \
+            upload to SLIMS; if selected provide ng_id",
+            batch_table_column=True,
+        ),
+        "ng_id": LatchParameter(
+            display_name="ng_id",
+            description="Provide SLIMS ng_id (ie. NG00001) if pushing to \
+                        SLIMS and run_id does not end in '_NG00001'.",
+            placeholder="NGxxxxx",
+            batch_table_column=True,
+            rules=[
+                LatchRule(
+                    regex="^NG[0-9]{5}$",
+                    message="ng_id must match NGxxxxx format."
+                ),
+            ]
+        ),
     },
 )
 
@@ -217,8 +279,10 @@ def spatial_atac(
     r2: LatchFile,
     run_id: str,
     species: Species,
-    bulk: bool
-) -> (LatchDir):
+    bulk: bool,
+    upload_to_slims: bool,
+    ng_id: Optional[str],
+) -> LatchDir:
     """Pipeline for processing Spatial ATAC-seq data generated via DBiT-seq.
 
     Spatial ATAC-seq
@@ -236,27 +300,49 @@ def spatial_atac(
     * run Cell Ranger ATAC
     """
 
-    filtered_r1, filtered_r2, _, _ = filter_task(r1=r1, r2=r2, run_id=run_id)
-    input_dir = process_bc_task(r2=filtered_r2, run_id=run_id, bulk=bulk)
-    return cellranger_task(input_dir=input_dir, run_id=run_id, species=species)
+    filtered_r1, filtered_r2, _, _ = filter_task(
+        r1=r1,
+        r2=r2,
+        run_id=run_id
+    )
+    input_dir = process_bc_task(
+        r2=filtered_r2,
+        run_id=run_id,
+        bulk=bulk
+    )
+    cr_outs = cellranger_task(
+        input_dir=input_dir,
+        run_id=run_id,
+        species=species
+    )
+
+    return lims_task(
+        results_dir=cr_outs,
+        run_id=run_id,
+        upload=upload_to_slims,
+        ng_id=ng_id
+    )
 
 
 LaunchPlan(
     spatial_atac,
-    "Test Data",
+    "test data",
     {
         "r1" : LatchFile("latch:///downsampled/D01033_NG01681/ds_D01033_NG01681_S3_L001_R1_001.fastq.gz"),
         "r2" : LatchFile("latch:///downsampled/D01033_NG01681/ds_D01033_NG01681_S3_L001_R2_001.fastq.gz"),
         "run_id" : "ds_D01033_NG01681",
         "species" : Species.human,
-        "bulk" : False
+        "bulk" : False,
+        "upload_to_slims" : False,
+        "ng_id" : None
     },
 )
 
+
 if __name__ == '__main__':
-    cellranger_task(
-        input_dir=LatchDir("/cr_outs/ds_D01033_NG01681/cellranger_inputs"),
-        run_id="ds_D01033_NG01681",
-        species=Species.human
+    lims_task(
+        results_dir=LatchDir("latch:///cr_outs/B00352_NG01939/outs"),
+        run_id="B00352_NG01939",
+        ng_id='NG01939'
         )
 

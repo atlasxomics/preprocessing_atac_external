@@ -8,10 +8,10 @@ RUN curl -L https://sourceforge.net/projects/bbmap/files/BBMap_39.01.tar.gz/down
     BBMap_39.01.tar.gz && \
     tar -xvzf BBMap_39.01.tar.gz && \
     rm BBMap_39.01.tar.gz
-RUN python3 -m pip install biopython
+RUN python3 -m pip install biopython slims-python-api
 
 # cellranger download link has weird options, wonder if it'll work?
-RUN curl -o cellranger-atac-2.1.0.tar.gz "https://cf.10xgenomics.com/releases/cell-atac/cellranger-atac-2.1.0.tar.gz?Expires=1676351742&Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly9jZi4xMHhnZW5vbWljcy5jb20vcmVsZWFzZXMvY2VsbC1hdGFjL2NlbGxyYW5nZXItYXRhYy0yLjEuMC50YXIuZ3oiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE2NzYzNTE3NDJ9fX1dfQ__&Signature=kNpra-I~J11797P9bJcSPqMPEEpWRdQErDx1XULK50UMr0prkPgie67V3LBPlBsF6YZp85FRhsZifHizrLsgZhzIjXfMoqpNpXW0w8fJdZB4FZzDm-xarn40EjauUgtYntcXHXS1FpCgvl7F9Yb2ycpQi188ABK6sHHoZg1PQTfxYaxJf3yBVWoiUp~zeSefjo6RhGWjxIdhUO5jqxZCDX4owG1ib-3DgPRa8nRE3DvbK-3w-IRneDpbO82RkdXzKmYc9HMyJ4vISLFyxIbXM5d-RqVBVlp1fuTbs8Q8vk2xSsfb2AQIg9jq5WrnB6LjdZAIbsnTG0bbgpVcEItzBw__&Key-Pair-Id=APKAI7S6A5RYOXBWRPDA" -o \
+RUN curl -o cellranger-atac-2.1.0.tar.gz "https://cf.10xgenomics.com/releases/cell-atac/cellranger-atac-2.1.0.tar.gz?Expires=1677219504&Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly9jZi4xMHhnZW5vbWljcy5jb20vcmVsZWFzZXMvY2VsbC1hdGFjL2NlbGxyYW5nZXItYXRhYy0yLjEuMC50YXIuZ3oiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE2NzcyMTk1MDR9fX1dfQ__&Signature=VcNdi5cTx0CT9W-lBGa7RoU8PQCPCnRc27xOfVgl3dBTb23tUoQhQEhfMRgAfz4WLfWr0~0zSlIvytLpCkbGUVme9NJ4qU1KiOo4mQEek2JPKt2ZKArqJP2OGrviL2AP3RqLUS-T2wAFZV7gyZzsgNnHMLANO30xbayQxITU~EIdkCgy9epclro1vVHONFmj6Ap1Bis98LAaDLoi3e0vcfi~Ra70nU02JMf867G9iTKExswLiE7VYOXQgFbOCZ4lX9eJcUTdQFdzAgMR~EcweUnTcs-olYhODWgY0ZVdFtSpldI6grCOlRVhjZSnBp9q0qNPO8xrYjfqhaZbDC9fzw__&Key-Pair-Id=APKAI7S6A5RYOXBWRPDA" -o \
     cellranger-atac-2.1.0.tar.gz && \
     tar -xzvf cellranger-atac-2.1.0.tar.gz && \
     rm cellranger-atac-2.1.0.tar.gz
