@@ -2,10 +2,9 @@ import os
 import subprocess
 from enum import Enum
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 
 from latch import large_task, medium_task, small_task, workflow
-from latch.resources.conditional import create_conditional_section
 from latch.resources.launch_plan import LaunchPlan
 from latch.types import (
     LatchAuthor,
@@ -18,18 +17,17 @@ from latch.types import (
 
 import wf.lims as lims
 
-
 class Species(Enum):
     mouse = "refdata-cellranger-arc-mm10-2020-A-2.0.0"
     human = "refdata-cellranger-arc-GRCh38-2020-A-2.0.0"
-
+    rat = "Rnor6"
 
 @medium_task(retries=0)
 def filter_task(
     r1: LatchFile,
     r2: LatchFile,
     run_id: str
-) -> (LatchFile, LatchFile, LatchFile, LatchFile):
+) -> Tuple[LatchFile, LatchFile, LatchFile, LatchFile]:
 
     filtered_r1_l1 = Path(f"{run_id}_linker1_R1.fastq.gz").resolve()
     filtered_r2_l1 = Path(f"{run_id}_linker1_R2.fastq.gz").resolve()
