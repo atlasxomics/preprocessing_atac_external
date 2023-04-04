@@ -24,8 +24,8 @@ RUN curl -O https://cf.10xgenomics.com/supp/cell-atac/refdata-cellranger-arc-mm1
 # Copy helper script, rat reference genome
 COPY bc_process.py /root/bc_process.py
 
-COPY Rnor6.tar.gz /root/Rnor6.tar.gz
-RUN tar -xvzf Rnor6.tar.gz && \
+RUN curl -o Rnor6.tar.gz "https://atx-novogene.s3.us-east-1.amazonaws.com/references/Rnor6.tar.gz?response-content-disposition=inline&X-Amz-Security-Token=IQoJb3JpZ2luX2VjEAcaCXVzLWVhc3QtMSJHMEUCIDnXOG7sazT8MX7%2FLRYYpIPB6ObsJiZwBVhlsGku%2FEIlAiEA5qDnibowvMTwixhNHSF7jezQBGLBARe%2FDBbbueNg5D8q7QII4P%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FARAAGgwzMDcwNzU4NjY5MjciDCkrfnmbAw4QGoHXPyrBAokZDToAW3YpLT5UbQOEHSTXR6HCrqZWGbLw%2FnRb6ovKauhbeIR08w4zWBKD7CLyxKG197lIxb0D0ZdwiIvFEm8pmfFElV%2BXkHyNSJrIwd9eVj9LjmJRmcjWtuAmXmG0mSwz408g78G0hcHVxvCdwrT2Cnb5b5ZUx%2B4NnSbQQqz8JVNMoNRFQL71fhJ2h2pYlhaXesQAHSJI4%2BVzMQI1f09DVBJIpaAGmLw23L1YGRy8SWLvS6VnbSOs0x4XuYnPRYR97K3KrPAZPOV3TJU4fUu3rph3eGHwd1gn%2FloQUhLtU9%2BFn25w5gAQ3LeepYhqW9ujqDLmWupuRtDaW3coeu7hD1D3y69Q9XrcHZD8Kz7SA%2BvB9yH27fkg8Dm6x8Ea%2BXBBlGwroJb%2FwjsgkgMpn1RWU228RqHhS4ysXqqOiPnoTjCdtq2hBjqzAl5Vh9Ky2iLiVf4AthdE%2FysJ0FEPnBTDiyYbwvDZTU7O4yfVU8ET9GQbSOdUr%2Bs8czHGXAXEVGue71tsAtmQ7i02RVI2QY%2FgcEGfK%2BQu%2FERxtJiia9P4g2wMzRPieXycQ2WAeYgm9awLBJa7Wc5pCp0YmimuBnzgO3pFVS7zVkuzQkYm6gak3D72CjDglBsM9x8o32OJsvVEmMdRKpmUBsNSnLkQEOWQnXE1Lz9r8ljdLcvHULfskFQ3wD%2F%2FwYAiFkCMZTSP63TUt4GKFd3rox4q%2FWjTUhAKhv4NTzShnI0OjJ8dxhKvVbKotMdMYHh0ZNibdC9VnG7sgXrreCi9BmNsD7Bj1W6BRVGwLGnEisWefQAzExaeWxtJLQuCQdyjRZUqG9mcAFpKiDdRk9eVZOzpYd0%3D&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20230403T235920Z&X-Amz-SignedHeaders=host&X-Amz-Expires=43200&X-Amz-Credential=ASIAUO7ZF4EXSGZ3G2FL%2F20230403%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Signature=43f7b1bca79e839e36a7aac16eb81c701ea6e5d819bc35626f505ac6fd66582d" && \
+    tar -xvzf Rnor6.tar.gz && \
     rm Rnor6.tar.gz
 
 # Root barcodefile for barcode script, replace default barcode file
