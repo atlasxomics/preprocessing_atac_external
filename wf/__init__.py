@@ -17,7 +17,7 @@ from latch.types import (
 
 from latch.registry.table import Table
 
-# import wf.lims as lims
+import wf.lims as lims
 
 class Species(Enum):
     mouse = "refdata-cellranger-arc-mm10-2020-A-2.0.0"
@@ -316,7 +316,7 @@ def spatial_atac(
     bulk: bool,
     upload_to_slims: bool,
     ng_id: Optional[str],
-    table_id: str = "319"
+    table_id: str = "390"
 ) -> LatchDir:
     """Pipeline for processing Spatial ATAC-seq data generated via DBiT-seq.
 
@@ -381,8 +381,8 @@ LaunchPlan(
 
 
 if __name__ == '__main__':
-    upload_latch_registry(
-        results_dir=LatchDir("latch:///cr_outs/D01214_NG02300/outs"),
-        run_id="D01214_NG02300",
-        table_id="390"
+    lims_task(
+        results_dir=LatchDir("latch:///cr_outs/B00352_NG01939/outs"),
+        run_id="B00352_NG01939",
+        ng_id='NG01939'
     )
