@@ -15,7 +15,9 @@ from latch.types import (
     LatchRule
 )
 
-import wf.lims as lims
+from latch.registry.table import Table
+
+# import wf.lims as lims
 
 class Species(Enum):
     mouse = "refdata-cellranger-arc-mm10-2020-A-2.0.0"
@@ -202,6 +204,34 @@ def lims_task(
 
     return results_dir
 
+@small_task(retries=0)
+def upload_latch_registry(
+    results_dir: LatchDir,
+    run_id: str,
+    table_id: str = '390'
+):
+    table = Table(table_id)
+
+    summary_file = f"{results_dir.remote_path}/{run_id}_summary.csv"
+    single_cell_file = f"{results_dir.remote_path}/{run_id}_singlecell.csv"
+    spatial_fragment_file = f"{results_dir.remote_path}/{run_id}_fragments.tsv.gz"
+
+    with table.update() as updater:
+        updater.upsert_record(
+            run_id,
+            spatial_fragment_file=LatchFile(spatial_fragment_file)
+        )
+
+        updater.upsert_record(
+            run_id,
+            summary_csv=LatchFile(summary_file)
+        )
+
+        updater.upsert_record(
+            run_id,
+            single_cell_file=LatchFile(single_cell_file)
+        )
+
 metadata = LatchMetadata(
     display_name="Spatial ATAC-seq",
     author=LatchAuthor(
@@ -269,6 +299,10 @@ metadata = LatchMetadata(
                 ),
             ]
         ),
+        "table_id": LatchParameter(
+            display_name="Registry Table ID",
+            description="Provide the ID of the Registry table. Files that will be populated in the table are: singlecell.csv, fragments.tsv.gz, and summary.csv"
+        )
     },
 )
 
@@ -282,6 +316,7 @@ def spatial_atac(
     bulk: bool,
     upload_to_slims: bool,
     ng_id: Optional[str],
+    table_id: str = "319"
 ) -> LatchDir:
     """Pipeline for processing Spatial ATAC-seq data generated via DBiT-seq.
 
@@ -316,6 +351,12 @@ def spatial_atac(
         species=species
     )
 
+    upload_latch_registry(
+        results_dir=cr_outs,
+        run_id=run_id,
+        table_id=table_id
+    )
+
     return lims_task(
         results_dir=cr_outs,
         run_id=run_id,
@@ -340,9 +381,8 @@ LaunchPlan(
 
 
 if __name__ == '__main__':
-    lims_task(
-        results_dir=LatchDir("latch:///cr_outs/B00352_NG01939/outs"),
-        run_id="B00352_NG01939",
-        ng_id='NG01939'
-        )
-
+    upload_latch_registry(
+        results_dir=LatchDir("latch:///cr_outs/D01214_NG02300/outs"),
+        run_id="D01214_NG02300",
+        table_id="390"
+    )
