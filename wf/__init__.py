@@ -212,9 +212,9 @@ def upload_latch_registry(
 ):
     table = Table(table_id)
 
-    summary_file = f"{results_dir.remote_path}/{run_id}_summary.csv"
-    single_cell_file = f"{results_dir.remote_path}/{run_id}_singlecell.csv"
-    spatial_fragment_file = f"{results_dir.remote_path}/{run_id}_fragments.tsv.gz"
+    summary_file = f"{results_dir.remote_path}{run_id}_summary.csv"
+    single_cell_file = f"{results_dir.remote_path}{run_id}_singlecell.csv"
+    spatial_fragment_file = f"{results_dir.remote_path}{run_id}_fragments.tsv.gz"
 
     with table.update() as updater:
         updater.upsert_record(
