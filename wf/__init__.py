@@ -404,6 +404,6 @@ if __name__ == '__main__':
     cellranger_task(
         input_dir=LatchDir("latch:///cr_outs/ds_D01033_NG01681/cellranger_inputs"),
         run_id="ds_D01033_NG01681",
-        species=Species.mouse,
+        species=Species.human,
         barcode_file=BarcodeFile.x50
     )

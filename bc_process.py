@@ -27,7 +27,7 @@ input_file_R2 = args['i']
 output_file_R3 = args['o3']
 output_file_R2 = args['o2']
 if args['b']:
-    bc_list = gzopen('/root/737K-cratac-v1.txt.gz', 'rt').readlines()
+    bc_list = gzopen('/root/bc50.txt.gz', 'rt').readlines()
 
 with gzopen(input_file_R2, 'rt') as in_handle_R2, \
 	   open(output_file_R3, 'w') as out_handle_R3, \
