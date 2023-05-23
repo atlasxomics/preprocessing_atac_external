@@ -24,6 +24,10 @@ class Species(Enum):
     human = "refdata-cellranger-arc-GRCh38-2020-A-2.0.0"
     rat = "Rnor6"
 
+class BarcodeFile(Enum):
+    x50 = "bc50.txt.gz"
+    x96 = "bc96.txt.gz"
+    
 @medium_task(retries=0)
 def filter_task(
     r1: LatchFile,
@@ -94,7 +98,6 @@ def filter_task(
         )
     )
 
-
 @medium_task(retries=0)
 def process_bc_task(
     r2: LatchFile,
@@ -131,18 +134,27 @@ def process_bc_task(
         f"latch:///cr_outs/{run_id}/cellranger_inputs/"
     )
 
-
 @large_task(retries=0)
 def cellranger_task(
     input_dir: LatchDir,
     run_id: str,
-    species: Species
-) -> (LatchDir):
+    species: Species,
+    barcode_file: BarcodeFile
+) -> LatchDir:
     """Run Cell Ranger ATAC on cellranger_inputs dir; append run_id to all
     outfiles.
     """
 
-    local_out = Path(f'{run_id}/outs/').resolve()
+    local_out = Path(f"{run_id}/outs/").resolve()
+    barcode_path = Path(f"{barcode_file.value}").resolve()
+
+    # overright default CellRanger barcode file with DBiT barcode file
+    _barcode_cmd = [
+        "cp",
+        f"{barcode_path}",
+        "/root/cellranger-atac-2.1.0/lib/python/atac/barcodes/737K-cratac-v1.txt.gz"
+    ]
+    subprocess.run(_barcode_cmd)
 
     _cr_command = [
     "cellranger-atac-2.1.0/cellranger-atac",
@@ -161,7 +173,7 @@ def cellranger_task(
         for f in os.listdir(local_out):
             os.rename(f'{local_out}/{f}', f'{local_out}/{run_id}_{f}')
     except FileNotFoundError:
-        print("No output files detected; check Cell Ranger logs for failure")
+        print("No output files detected; check CellRanger logs for failure")
 
     return LatchDir(
         str(local_out),
@@ -275,6 +287,12 @@ metadata = LatchMetadata(
             description="Select reference genome for cellranger atac.",
             batch_table_column=True,
         ),
+        "barcode_file": LatchParameter(
+            display_name="barcode file",
+            description="Expected sequences of barcodes used is assay; \
+                        bc50.txt.gz for 50x50, bc96.txt.gz for 96x96",
+            batch_table_column=True,
+        ),
         "bulk": LatchParameter(
             display_name="bulk",
             description="If True, barcodes will be randomly assigned to reads.",
@@ -283,7 +301,7 @@ metadata = LatchMetadata(
        "upload_to_slims": LatchParameter(
             display_name="upload to slims",
             description="Select for CellRanger outs (summary.csv) to be \
-            upload to SLIMS; if selected provide ng_id",
+                        upload to SLIMS; if selected provide ng_id",
             batch_table_column=True,
         ),
         "ng_id": LatchParameter(
@@ -301,11 +319,12 @@ metadata = LatchMetadata(
         ),
         "table_id": LatchParameter(
             display_name="Registry Table ID",
-            description="Provide the ID of the Registry table. Files that will be populated in the table are: singlecell.csv, fragments.tsv.gz, and summary.csv"
+            description="Provide the ID of the Registry table. Files that will \
+                        be populated in the table are: singlecell.csv, \
+                        fragments.tsv.gz, and summary.csv"
         )
     },
 )
-
 
 @workflow(metadata)
 def spatial_atac(
@@ -316,6 +335,7 @@ def spatial_atac(
     bulk: bool,
     upload_to_slims: bool,
     ng_id: Optional[str],
+    barcode_file: BarcodeFile = BarcodeFile.x50,
     table_id: str = "390"
 ) -> LatchDir:
     """Pipeline for processing Spatial ATAC-seq data generated via DBiT-seq.
@@ -348,7 +368,8 @@ def spatial_atac(
     cr_outs = cellranger_task(
         input_dir=input_dir,
         run_id=run_id,
-        species=species
+        species=species,
+        barcode_file=barcode_file
     )
 
     upload_latch_registry(
@@ -364,25 +385,25 @@ def spatial_atac(
         ng_id=ng_id
     )
 
-
 LaunchPlan(
     spatial_atac,
-    "test data",
+    "default",
     {
         "r1" : LatchFile("latch:///downsampled/D01033_NG01681/ds_D01033_NG01681_S3_L001_R1_001.fastq.gz"),
         "r2" : LatchFile("latch:///downsampled/D01033_NG01681/ds_D01033_NG01681_S3_L001_R2_001.fastq.gz"),
         "run_id" : "ds_D01033_NG01681",
         "species" : Species.human,
+        "barcode_file" : BarcodeFile.x50,
         "bulk" : False,
         "upload_to_slims" : False,
         "ng_id" : None
     },
 )
 
-
 if __name__ == '__main__':
-    lims_task(
-        results_dir=LatchDir("latch:///cr_outs/B00352_NG01939/outs"),
-        run_id="B00352_NG01939",
-        ng_id='NG01939'
+    cellranger_task(
+        input_dir=LatchDir("latch:///cr_outs/ds_D01033_NG01681/cellranger_inputs"),
+        run_id="ds_D01033_NG01681",
+        species=Species.mouse,
+        barcode_file=BarcodeFile.x50
     )

@@ -29,9 +29,9 @@ RUN curl -o Rnor6.tar.gz "https://atx-novogene.s3.us-east-1.amazonaws.com/refere
     tar -xvzf Rnor6.tar.gz && \
     rm Rnor6.tar.gz
 
-# Root barcodefile for barcode script, replace default barcode file
-COPY 737K-cratac-v1.txt.gz /root/737K-cratac-v1.txt.gz
-COPY 737K-cratac-v1.txt.gz /root/cellranger-atac-2.1.0/lib/python/atac/barcodes/737K-cratac-v1.txt.gz
+# Copy barcode files to root dir
+COPY bc50.txt.gz /root/bc50.txt.gz
+COPY bc96.txt.gz /root/bc96.txt.gz
 
 # STOP HERE:
 # The following lines are needed to ensure your build environement works
