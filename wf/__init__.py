@@ -26,6 +26,7 @@ class Species(Enum):
 
 class BarcodeFile(Enum):
     x50 = "bc50.txt.gz"
+    x50_old = "bc50_old.txt.gz"
     x96 = "bc96.txt.gz"
     
 @medium_task(retries=0)
@@ -220,13 +221,13 @@ def lims_task(
 def upload_latch_registry(
     results_dir: LatchDir,
     run_id: str,
-    table_id: str = '390'
+    table_id: str = "390"
 ):
     table = Table(table_id)
 
-    summary_file = f"{results_dir.remote_path}{run_id}_summary.csv"
-    single_cell_file = f"{results_dir.remote_path}{run_id}_singlecell.csv"
-    spatial_fragment_file = f"{results_dir.remote_path}{run_id}_fragments.tsv.gz"
+    summary_file = f"{results_dir.remote_path}/{run_id}_summary.csv"
+    single_cell_file = f"{results_dir.remote_path}/{run_id}_singlecell.csv"
+    spatial_fragment_file = f"{results_dir.remote_path}/{run_id}_fragments.tsv.gz"
 
     with table.update() as updater:
         updater.upsert_record(
@@ -290,7 +291,8 @@ metadata = LatchMetadata(
         "barcode_file": LatchParameter(
             display_name="barcode file",
             description="Expected sequences of barcodes used is assay; \
-                        bc50.txt.gz for 50x50, bc96.txt.gz for 96x96",
+                        bc50.txt.gz for SOP 50x50, bc96.txt.gz for 96x96, \
+                        bc50_old.txt.gz for previous version of 50x50.",
             batch_table_column=True,
         ),
         "bulk": LatchParameter(

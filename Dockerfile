@@ -31,6 +31,7 @@ RUN curl -o Rnor6.tar.gz "https://atx-st-references.s3.us-east-1.amazonaws.com/r
 
 # Copy barcode files to root dir
 COPY bc50.txt.gz /root/bc50.txt.gz
+COPY bc50_old.txt.gz /root/bc50_old.txt.gz
 COPY bc96.txt.gz /root/bc96.txt.gz
 
 # STOP HERE:
