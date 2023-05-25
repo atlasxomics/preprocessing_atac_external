@@ -13,3 +13,4 @@ config
 # big files
 Rnor6/
 Rnor6.tar.gz
+scripts/outs/
