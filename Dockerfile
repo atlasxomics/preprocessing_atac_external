@@ -34,6 +34,8 @@ COPY bc50.txt.gz /root/bc50.txt.gz
 COPY bc50_old.txt.gz /root/bc50_old.txt.gz
 COPY bc96.txt.gz /root/bc96.txt.gz
 
+RUN python3 -m pip install matplotlib
+
 # STOP HERE:
 # The following lines are needed to ensure your build environement works
 # correctly with latch.

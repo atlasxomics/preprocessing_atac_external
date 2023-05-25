@@ -6,6 +6,7 @@ from typing import Optional, Tuple
 
 from latch import large_task, medium_task, small_task, workflow
 from latch.resources.launch_plan import LaunchPlan
+from latch.registry.table import Table
 from latch.types import (
     LatchAuthor,
     LatchDir,
@@ -15,9 +16,8 @@ from latch.types import (
     LatchRule
 )
 
-from latch.registry.table import Table
-
 import wf.lims as lims
+from wf.outliers import plotting_task
 
 class Species(Enum):
     mouse = "refdata-cellranger-arc-mm10-2020-A-2.0.0"
@@ -28,7 +28,7 @@ class BarcodeFile(Enum):
     x50 = "bc50.txt.gz"
     x50_old = "bc50_old.txt.gz"
     x96 = "bc96.txt.gz"
-    
+
 @medium_task(retries=0)
 def filter_task(
     r1: LatchFile,
@@ -170,16 +170,27 @@ def cellranger_task(
 
     subprocess.run(_cr_command)
 
-    try: # Append run_id to outs and check for out_dir
-        for f in os.listdir(local_out):
-            os.rename(f'{local_out}/{f}', f'{local_out}/{run_id}_{f}')
+    # Ensure CelRanger ran correctly
+    try:
+        os.listdir(local_out)
     except FileNotFoundError:
         print("No output files detected; check CellRanger logs for failure")
 
-    return LatchDir(
-        str(local_out),
-        f"latch:///cr_outs/{run_id}/outs/"
-    )
+    # Make plot with lane averages, highlighting outliers, move to out dir
+    positions_paths = {
+        "x50"     : "latch:///spatials/x50_all_tissue_positions_list.csv",
+        "x50_old" : "latch:///spatials/x50-old_tissue_positions_list.csv",
+        "x96"     : "latch:///spatials/x96_all_tissue_positions_list.csv"
+        }
+    positions_file = LatchFile(positions_paths[barcode_file.name])
+    plotting_task(f"{local_out}/singlecell.csv", positions_file.local_path)
+    subprocess.run(["mv", "/root/lane_qc.pdf", str(local_out)])
+
+    # Append run_id to outs and check for out_dir
+    for f in os.listdir(local_out):
+        os.rename(f'{local_out}/{f}', f'{local_out}/{run_id}_{f}')
+
+    return LatchDir(str(local_out), f"latch:///cr_outs/{run_id}/outs/")
 
 @small_task(retries=0)
 def lims_task(
