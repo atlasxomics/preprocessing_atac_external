@@ -1,3 +1,5 @@
+"""AtlasXomics Inc, preprocessing ATAC-seq """
+
 import os
 import subprocess
 from enum import Enum
@@ -83,19 +85,19 @@ def filter_task(
     return (
             LatchFile(
                 str(filtered_r1_l2),
-                f"latch:///cr_outs/{run_id}/cellranger_inputs/{run_id}_S1_L001_R1_001.fastq.gz"
+                f"latch:///atac_outs/{run_id}/cellranger_inputs/{run_id}_S1_L001_R1_001.fastq.gz"
         ),
             LatchFile(
                 str(filtered_r2_l2),
-                f"latch:///cr_outs/{run_id}/preprocessing/{run_id}_linker2_R2.fastq.gz"
+                f"latch:///atac_outs/{run_id}/preprocessing/{run_id}_linker2_R2.fastq.gz"
         ),
             LatchFile(
                 str(l1_stats),
-                f"latch:///cr_outs/{run_id}/preprocessing/{l1_stats.name}"
+                f"latch:///atac_outs/{run_id}/preprocessing/{l1_stats.name}"
         ),
             LatchFile(
                 str(l2_stats),
-                f"latch:///cr_outs/{run_id}/preprocessing/{l2_stats.name}"
+                f"latch:///atac_outs/{run_id}/preprocessing/{l2_stats.name}"
         )
     )
 
@@ -132,7 +134,7 @@ def process_bc_task(
 
     return LatchDir(
         str(outdir),
-        f"latch:///cr_outs/{run_id}/cellranger_inputs/"
+        f"latch:///atac_outs/{run_id}/cellranger_inputs/"
     )
 
 @large_task(retries=0)
@@ -190,7 +192,7 @@ def cellranger_task(
     for f in os.listdir(local_out):
         os.rename(f'{local_out}/{f}', f'{local_out}/{run_id}_{f}')
 
-    return LatchDir(str(local_out), f"latch:///cr_outs/{run_id}/outs/")
+    return LatchDir(str(local_out), f"latch:///atac_outs/{run_id}/outs/")
 
 @small_task(retries=0)
 def lims_task(
@@ -257,13 +259,13 @@ def upload_latch_registry(
         )
 
 metadata = LatchMetadata(
-    display_name="Spatial ATAC-seq",
+    display_name="preprocessing ATAC-seq",
     author=LatchAuthor(
-        name="James McGann",
-        email="jpaulmcgann@gmail.com",
-        github="github.com/jpmcga",
+        name="AtlasXomics, Inc.",
+        email="jamesm@atlasxomics.com",
+        github="github.com/atlasxomics",
     ),
-    repository="https://github.com/jpmcga/spatial-atacseq_latch/",
+    repository="https://github.com/atlasxomics/spatial-atacseq_latch",
     parameters={
         "r1": LatchParameter(
             display_name="read 1",
@@ -278,7 +280,7 @@ metadata = LatchMetadata(
         ),
         "run_id": LatchParameter(
             display_name="run id",
-            description="ATX Run ID with optional prefix, default to \
+            description="Run ID or run with optional prefix, default to \
                         Dxxxxx_NGxxxxx format.",
             batch_table_column=True,
             placeholder="Dxxxxx_NGxxxxx",
@@ -296,6 +298,7 @@ metadata = LatchMetadata(
         ),
         "species": LatchParameter(
             display_name="species",
+            placeholder="select species for reference genome",
             description="Select reference genome for cellranger atac.",
             batch_table_column=True,
         ),
@@ -351,16 +354,16 @@ def spatial_atac(
     barcode_file: BarcodeFile = BarcodeFile.x50,
     table_id: str = "390"
 ) -> LatchDir:
-    """Pipeline for processing Spatial ATAC-seq data generated via DBiT-seq.
+    """Pipeline for processing spatial ATAC-seq data generated via DBiT-seq.
 
-    Spatial ATAC-seq
+    preprocessing ATAC-seq
     ----
 
-    Process data from DBiT-seq experiments for spatially-resolved epigenomics:
+    This workflow will convert fastq files from a spatial ATAC-seq experiemnt 
+    (as per [Deng, 2022](https://www.nature.com/articles/s41586-022-05094-1))
+    into ATAC-seq fragments and assay performance metrics.
 
-    > See Deng, Y. et al 2022.
-
-    # Steps
+    # Workflow overview
 
     * filter read2 on linker 1 identify via bbduk
     * filter read2 on linker 2 identify via bbduk
@@ -378,7 +381,7 @@ def spatial_atac(
         run_id=run_id,
         bulk=bulk
     )
-    cr_outs = cellranger_task(
+    atac_outs = cellranger_task(
         input_dir=input_dir,
         run_id=run_id,
         species=species,
@@ -386,13 +389,13 @@ def spatial_atac(
     )
 
     upload_latch_registry(
-        results_dir=cr_outs,
+        results_dir=atac_outs,
         run_id=run_id,
         table_id=table_id
     )
 
     return lims_task(
-        results_dir=cr_outs,
+        results_dir=atac_outs,
         run_id=run_id,
         upload=upload_to_slims,
         ng_id=ng_id
@@ -415,7 +418,7 @@ LaunchPlan(
 
 if __name__ == '__main__':
     cellranger_task(
-        input_dir=LatchDir("latch:///cr_outs/ds_D01033_NG01681/cellranger_inputs"),
+        input_dir=LatchDir("latch:///atac_outs/ds_D01033_NG01681/cellranger_inputs"),
         run_id="ds_D01033_NG01681",
         species=Species.human,
         barcode_file=BarcodeFile.x50

@@ -82,7 +82,7 @@ def plotting_task(
 
     plt.rc("figure", figsize=(15,10))
 
-    fig, ax = plt.subplots(4,1, sharex=True)
+    fig, ax = plt.subplots(4, 1, sharex=True)
     plt.subplots_adjust(wspace=0, hspace=0.2)
 
     i = 0
