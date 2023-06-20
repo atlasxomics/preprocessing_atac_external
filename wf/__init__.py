@@ -1,4 +1,4 @@
-"""AtlasXomics Inc, preprocessing ATAC-seq """
+"""AtlasXomics Inc, preprocessing ATAC-seq external"""
 
 import os
 import subprocess
@@ -6,9 +6,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Optional, Tuple
 
-from latch import large_task, medium_task, small_task, workflow
+from latch import large_task, medium_task, workflow
 from latch.resources.launch_plan import LaunchPlan
-from latch.registry.table import Table
 from latch.types import (
     LatchAuthor,
     LatchDir,
@@ -18,7 +17,6 @@ from latch.types import (
     LatchRule
 )
 
-import wf.lims as lims
 from wf.outliers import plotting_task
 
 class Species(Enum):
@@ -85,7 +83,7 @@ def filter_task(
     return (
             LatchFile(
                 str(filtered_r1_l2),
-                f"latch:///atac_outs/{run_id}/cellranger_inputs/{run_id}_S1_L001_R1_001.fastq.gz"
+                f"latch:///atac_outs/{run_id}/inputs/{run_id}_S1_L001_R1_001.fastq.gz"
         ),
             LatchFile(
                 str(filtered_r2_l2),
@@ -105,13 +103,12 @@ def filter_task(
 def process_bc_task(
     r2: LatchFile,
     run_id: str,
-    bulk: bool
 ) -> LatchDir:
     """ Process read2: save genomic portion as read3, extract 16 bp
     barcode seqs and save as read3
     """
 
-    outdir = Path("cellranger_inputs/").resolve()
+    outdir = Path("inputs/").resolve()
     os.mkdir(outdir)
     new_r2 = Path(f"{outdir}/{run_id}_S1_L001_R2_001.fastq").resolve()
     r3 = Path(f"{outdir}/{run_id}_S1_L001_R3_001.fastq").resolve()
@@ -127,14 +124,11 @@ def process_bc_task(
         f"{str(r3)}"
     ]
 
-    if bulk:
-        _bc_cmd.append('-b')
-
     subprocess.run(_bc_cmd)
 
     return LatchDir(
         str(outdir),
-        f"latch:///atac_outs/{run_id}/cellranger_inputs/"
+        f"latch:///atac_outs/{run_id}/inputs/"
     )
 
 @large_task(retries=0)
@@ -144,14 +138,12 @@ def cellranger_task(
     species: Species,
     barcode_file: BarcodeFile
 ) -> LatchDir:
-    """Run Cell Ranger ATAC on cellranger_inputs dir; append run_id to all
-    outfiles.
-    """
+    """Run Cell Ranger ATAC on inputs dir; append run_id to all outfiles."""
 
     local_out = Path(f"{run_id}/outs/").resolve()
     barcode_path = Path(f"{barcode_file.value}").resolve()
 
-    # overright default CellRanger barcode file with DBiT barcode file
+    # overwrite default barcode file with DBiT barcode file
     _barcode_cmd = [
         "cp",
         f"{barcode_path}",
@@ -172,11 +164,11 @@ def cellranger_task(
 
     subprocess.run(_cr_command)
 
-    # Ensure CelRanger ran correctly
+    # Ensure pipeline ran correctly
     try:
         os.listdir(local_out)
     except FileNotFoundError:
-        print("No output files detected; check CellRanger logs for failure")
+        print("No output files detected; check logs for failure")
 
     # Make plot with lane averages, highlighting outliers, move to out dir
     positions_paths = {
@@ -194,70 +186,6 @@ def cellranger_task(
 
     return LatchDir(str(local_out), f"latch:///atac_outs/{run_id}/outs/")
 
-@small_task(retries=0)
-def lims_task(
-    results_dir: LatchDir,
-    run_id: str,
-    upload: bool,
-    ng_id: Optional[str]
-) -> LatchDir:
-
-    if upload:
-    
-        data = Path(results_dir.local_path + f'/{run_id}_summary.csv').resolve()
-        
-        slims = lims.slims_init()
-        results = lims.csv_to_dict(data)
-    
-        payload = {lims.mapping[key]:value for (key, value) in results.items()
-                    if key in lims.mapping.keys() and value not in lims.NA}
-    
-        if ng_id:
-            pk = lims.get_pk(ng_id, slims)
-        else:
-            try:
-                pk = lims.get_pk(run_id.split('_')[-1], slims)
-            except IndexError:
-                print('Invalid SLIMS ng_id.')
-    
-        payload['rslt_fk_content'] = pk
-        payload['rslt_fk_test'] = 39
-        payload['rslt_cf_value'] = 'upload'
-
-        print(lims.push_result(payload, slims))
-    
-        return results_dir
-
-    return results_dir
-
-@small_task(retries=0)
-def upload_latch_registry(
-    results_dir: LatchDir,
-    run_id: str,
-    table_id: str = "390"
-):
-    table = Table(table_id)
-
-    summary_file = f"{results_dir.remote_path}/{run_id}_summary.csv"
-    single_cell_file = f"{results_dir.remote_path}/{run_id}_singlecell.csv"
-    spatial_fragment_file = f"{results_dir.remote_path}/{run_id}_fragments.tsv.gz"
-
-    with table.update() as updater:
-        updater.upsert_record(
-            run_id,
-            spatial_fragment_file=LatchFile(spatial_fragment_file)
-        )
-
-        updater.upsert_record(
-            run_id,
-            summary_csv=LatchFile(summary_file)
-        )
-
-        updater.upsert_record(
-            run_id,
-            single_cell_file=LatchFile(single_cell_file)
-        )
-
 metadata = LatchMetadata(
     display_name="preprocessing ATAC-seq",
     author=LatchAuthor(
@@ -265,7 +193,7 @@ metadata = LatchMetadata(
         email="jamesm@atlasxomics.com",
         github="github.com/atlasxomics",
     ),
-    repository="https://github.com/atlasxomics/spatial-atacseq_latch",
+    repository="https://github.com/atlasxomics/preprocessing_atac_external",
     parameters={
         "r1": LatchParameter(
             display_name="read 1",
@@ -280,65 +208,28 @@ metadata = LatchMetadata(
         ),
         "run_id": LatchParameter(
             display_name="run id",
-            description="Run ID or run with optional prefix, default to \
-                        Dxxxxx_NGxxxxx format.",
+            description="Identifier/name of run",
             batch_table_column=True,
-            placeholder="Dxxxxx_NGxxxxx",
             rules=[
                 LatchRule(
                     regex="^[^/].*",
                     message="run id cannot start with a '/'"
-                ),
-                LatchRule(
-                    regex="_NG[0-9]{5}$",
-                    message="Provide ng_id in ng_id field if upload to \
-                    SLIMS desired."
                 )
             ]
         ),
         "species": LatchParameter(
             display_name="species",
             placeholder="select species for reference genome",
-            description="Select reference genome for cellranger atac.",
+            description="Select reference genome for alignment.",
             batch_table_column=True,
         ),
         "barcode_file": LatchParameter(
             display_name="barcode file",
             description="Expected sequences of barcodes used is assay; \
                         bc50.txt.gz for SOP 50x50, bc96.txt.gz for 96x96, \
-                        bc50_old.txt.gz for previous version of 50x50.",
+                        bc50_old.txt.gz for version from Deng, 2022 of 50x50.",
             batch_table_column=True,
         ),
-        "bulk": LatchParameter(
-            display_name="bulk",
-            description="If True, barcodes will be randomly assigned to reads.",
-            batch_table_column=True,
-        ),
-       "upload_to_slims": LatchParameter(
-            display_name="upload to slims",
-            description="Select for CellRanger outs (summary.csv) to be \
-                        upload to SLIMS; if selected provide ng_id",
-            batch_table_column=True,
-        ),
-        "ng_id": LatchParameter(
-            display_name="ng_id",
-            description="Provide SLIMS ng_id (ie. NG00001) if pushing to \
-                        SLIMS and run_id does not end in '_NG00001'.",
-            placeholder="NGxxxxx",
-            batch_table_column=True,
-            rules=[
-                LatchRule(
-                    regex="^NG[0-9]{5}$",
-                    message="ng_id must match NGxxxxx format."
-                ),
-            ]
-        ),
-        "table_id": LatchParameter(
-            display_name="Registry Table ID",
-            description="Provide the ID of the Registry table. Files that will \
-                        be populated in the table are: singlecell.csv, \
-                        fragments.tsv.gz, and summary.csv"
-        )
     },
 )
 
@@ -348,15 +239,11 @@ def spatial_atac(
     r2: LatchFile,
     run_id: str,
     species: Species,
-    bulk: bool,
-    upload_to_slims: bool,
-    ng_id: Optional[str],
     barcode_file: BarcodeFile = BarcodeFile.x50,
-    table_id: str = "390"
 ) -> LatchDir:
     """Pipeline for processing spatial ATAC-seq data generated via DBiT-seq.
 
-    preprocessing ATAC-seq
+    preprocessing ATAC-seq external
     ----
 
     This workflow will convert fastq files from a spatial ATAC-seq experiemnt 
@@ -378,48 +265,23 @@ def spatial_atac(
     )
     input_dir = process_bc_task(
         r2=filtered_r2,
-        run_id=run_id,
-        bulk=bulk
+        run_id=run_id
     )
-    atac_outs = cellranger_task(
+    return cellranger_task(
         input_dir=input_dir,
         run_id=run_id,
         species=species,
         barcode_file=barcode_file
     )
 
-    upload_latch_registry(
-        results_dir=atac_outs,
-        run_id=run_id,
-        table_id=table_id
-    )
-
-    return lims_task(
-        results_dir=atac_outs,
-        run_id=run_id,
-        upload=upload_to_slims,
-        ng_id=ng_id
-    )
-
 LaunchPlan(
     spatial_atac,
-    "default",
+    "demo",
     {
-        "r1" : LatchFile("latch:///downsampled/D01033_NG01681/ds_D01033_NG01681_S3_L001_R1_001.fastq.gz"),
-        "r2" : LatchFile("latch:///downsampled/D01033_NG01681/ds_D01033_NG01681_S3_L001_R2_001.fastq.gz"),
-        "run_id" : "ds_D01033_NG01681",
+        "r1" : LatchFile("latch:///fastq_files/demo/demo_S3_L001_R1_001.fastq.gz"),
+        "r2" : LatchFile("latch:///fastq_files/demo/demo_S3_L001_R2_001.fastq.gz"),
+        "run_id" : "demo",
         "species" : Species.human,
-        "barcode_file" : BarcodeFile.x50,
-        "bulk" : False,
-        "upload_to_slims" : False,
-        "ng_id" : None
+        "barcode_file" : BarcodeFile.x50
     },
 )
-
-if __name__ == '__main__':
-    cellranger_task(
-        input_dir=LatchDir("latch:///atac_outs/ds_D01033_NG01681/cellranger_inputs"),
-        run_id="ds_D01033_NG01681",
-        species=Species.human,
-        barcode_file=BarcodeFile.x50
-    )

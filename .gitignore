@@ -1,16 +1,10 @@
-# Latch stuff
+# latch stuff
 .latch_history
 .latch_report.tar.gz
 .logs
-wf/creds.py
 
 # python stuff
 __pycache__/
 *.py[cod]
 wf/__pycache__/
 config
-
-# big files
-Rnor6/
-Rnor6.tar.gz
-scripts/outs/
