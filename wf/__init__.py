@@ -1,5 +1,6 @@
 """AtlasXomics Inc, preprocessing ATAC-seq external"""
 
+import logging
 import os
 import subprocess
 from enum import Enum
@@ -18,6 +19,9 @@ from latch.types import (
 )
 
 from wf.outliers import plotting_task
+
+
+logging.basicConfig(format="%(levelname)s - %(asctime)s - %(message)s")
 
 class Species(Enum):
     mouse = "refdata-cellranger-arc-mm10-2020-A-2.0.0"
@@ -168,7 +172,7 @@ def cellranger_task(
     try:
         os.listdir(local_out)
     except FileNotFoundError:
-        print("No output files detected; check logs for failure")
+        logging.warning("No output files detected; check logs for failure")
 
     # Make plot with lane averages, highlighting outliers, move to out dir
     positions_paths = {
