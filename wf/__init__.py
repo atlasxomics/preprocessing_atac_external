@@ -4,7 +4,7 @@ import os
 import subprocess
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Tuple
 
 from latch import large_task, medium_task, workflow
 from latch.resources.launch_plan import LaunchPlan
@@ -214,7 +214,11 @@ metadata = LatchMetadata(
                 LatchRule(
                     regex="^[^/].*",
                     message="run id cannot start with a '/'"
-                )
+                ),
+                LatchRule(
+                    regex="^\S+$",
+                    message="run id cannot contain whitespace"
+                )                
             ]
         ),
         "species": LatchParameter(
